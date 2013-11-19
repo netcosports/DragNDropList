@@ -76,7 +76,12 @@ public class DragNDropSimpleAdapter extends SimpleAdapter implements DragNDropAd
 		
 	}
 
-	@Override
+    @Override
+    public void onItemDragMoves(DragNDropListView parent, int startPosition, int endPosition) {
+
+    }
+
+    @Override
 	public void onItemDrop(DragNDropListView parent, View view, int startPosition, int endPosition, long id) {
 		int position = mPosition[startPosition];
 		

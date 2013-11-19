@@ -35,6 +35,7 @@ public class DragNDropListView extends ListView {
 	
 	public static interface OnItemDragNDropListener {
 		public void onItemDrag(DragNDropListView parent, View view, int position, long id);
+        public void onItemDragMoves(DragNDropListView parent, int startPosition, int endPosition);
 		public void onItemDrop(DragNDropListView parent, View view, int startPosition, int endPosition, long id);
 	}
 	
@@ -146,6 +147,10 @@ public class DragNDropListView extends ListView {
 				break;
 			case MotionEvent.ACTION_MOVE:
 				drag(0, y);
+                if (mStartPosition != INVALID_POSITION) {
+                    int actualPosition =  pointToPosition(x,y);
+                    onDragMoves(actualPosition);
+                }
 				break;
 			case MotionEvent.ACTION_CANCEL:
 			case MotionEvent.ACTION_UP:
@@ -226,6 +231,21 @@ public class DragNDropListView extends ListView {
         item.setVisibility(View.INVISIBLE);
         item.invalidate(); // We have not changed anything else.
 	}
+
+    private void onDragMoves(int endPosition)
+    {
+        Adapter adapter = getAdapter();
+        DragNDropAdapter dndAdapter;
+
+        // if exists a footer/header we have our adapter wrapped
+        if (adapter instanceof WrapperListAdapter) {
+            dndAdapter = (DragNDropAdapter)((WrapperListAdapter)adapter).getWrappedAdapter();
+        } else {
+            dndAdapter = (DragNDropAdapter)adapter;
+        }
+
+        dndAdapter.onItemDragMoves(this, mStartPosition, endPosition);
+    }
 	
 	/**
 	 * Release all dragging resources.
