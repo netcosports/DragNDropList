@@ -19,7 +19,9 @@ package com.terlici.dragndroplist;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.PixelFormat;
+import android.graphics.Rect;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
@@ -47,6 +49,7 @@ public class DragNDropListView extends ListView {
 	int mDragHandler = 0;
 	
 	ImageView mDragView;
+    View mItemView;
 	
 	OnItemDragNDropListener mDragNDropListener;
 
@@ -119,6 +122,39 @@ public class DragNDropListView extends ListView {
 	public View getDragView() {
 		return mDragView;
 	}
+
+    public void smoothScrollByOffset(int position) {
+        int index = -1;
+        if (position < 0) {
+            index = getFirstVisiblePosition();
+        } else if (position > 0) {
+            index = getLastVisiblePosition();
+        }
+
+        if (index > -1) {
+            View child = getChildAt(index - getFirstVisiblePosition());
+            if (child != null) {
+                Rect visibleRect = new Rect();
+                if (child.getGlobalVisibleRect(visibleRect)) {
+                    // the child is partially visible
+                    int childRectArea = child.getWidth() * child.getHeight();
+                    int visibleRectArea = visibleRect.width() * visibleRect.height();
+                    float visibleArea = (visibleRectArea / (float) childRectArea);
+                    final float visibleThreshold = 0.75f;
+                    if ((position < 0) && (visibleArea < visibleThreshold)) {
+                        // the top index is not perceivably visible so offset
+                        // to account for showing that top index as well
+                        ++index;
+                    } else if ((position > 0) && (visibleArea < visibleThreshold)) {
+                        // the bottom index is not perceivably visible so offset
+                        // to account for showing that bottom index as well
+                        --index;
+                    }
+                }
+                smoothScrollToPosition(Math.max(0, Math.min(getCount(), index + position)));
+            }
+        }
+    }
 	
 	@Override
 	public boolean onTouchEvent(MotionEvent ev) {
@@ -150,6 +186,22 @@ public class DragNDropListView extends ListView {
                 if (mStartPosition != INVALID_POSITION) {
                     int actualPosition =  pointToPosition(x,y);
                     onDragMoves(actualPosition);
+
+                    Log.e("DragNDrop", "getScrollY " + getScrollY());
+                    Log.e("DragNDrop", "getTop " + getTop());
+                    Log.e("DragNDrop", "getBottom " + getBottom());
+                    Log.e("DragNDrop", "getMeasuredHeight " + getMeasuredHeight());
+                    Log.e("DragNDrop", "x " + x);
+                    Log.e("DragNDrop", "y " + y);
+
+                    if(y <= getTop())
+                    {
+                        smoothScrollByOffset(- 1);
+                    }
+                    else if(y + mDragView.getMeasuredHeight() >= getTop() + getMeasuredHeight() )
+                    {
+                        smoothScrollByOffset(1);
+                    }
                 }
 				break;
 			case MotionEvent.ACTION_CANCEL:
@@ -179,14 +231,14 @@ public class DragNDropListView extends ListView {
 	 * @param y
 	 */
 	private void startDrag(int childIndex, int y) {
-		View item = getChildAt(childIndex);
+        mItemView = getChildAt(childIndex);
 		
-		if (item == null) return;
+		if (mItemView == null) return;
 
 		long id = getItemIdAtPosition(mStartPosition);
 
 		if (mDragNDropListener != null)
-        	mDragNDropListener.onItemDrag(this, item, mStartPosition, id);
+        	mDragNDropListener.onItemDrag(this, mItemView, mStartPosition, id);
 
         Adapter adapter = getAdapter();
         DragNDropAdapter dndAdapter;
@@ -198,13 +250,13 @@ public class DragNDropListView extends ListView {
             dndAdapter = (DragNDropAdapter)adapter;
         }
 
-        dndAdapter.onItemDrag(this, item, mStartPosition, id);
+        dndAdapter.onItemDrag(this, mItemView, mStartPosition, id);
 
-		item.setDrawingCacheEnabled(true);
+        mItemView.setDrawingCacheEnabled(true);
 		
         // Create a copy of the drawing cache so that it does not get recycled
         // by the framework when the list tries to clean up memory
-        Bitmap bitmap = Bitmap.createBitmap(item.getDrawingCache());
+        Bitmap bitmap = Bitmap.createBitmap(mItemView.getDrawingCache());
         
         WindowManager.LayoutParams mWindowParams = new WindowManager.LayoutParams();
         mWindowParams.gravity = Gravity.TOP;
@@ -227,9 +279,9 @@ public class DragNDropListView extends ListView {
 
         mWm.addView(v, mWindowParams);
         mDragView = v;
-        
-        item.setVisibility(View.INVISIBLE);
-        item.invalidate(); // We have not changed anything else.
+
+        mItemView.setVisibility(View.INVISIBLE);
+        mItemView.invalidate(); // We have not changed anything else.
 	}
 
     private void onDragMoves(int endPosition)
@@ -255,13 +307,13 @@ public class DragNDropListView extends ListView {
 	private void stopDrag(int childIndex, int endPosition) {
 		if (mDragView == null) return;
 
-		View item = getChildAt(childIndex);
+//		View item = getChildAt(childIndex);
 
         if (endPosition != INVALID_POSITION) {
             long id = getItemIdAtPosition(mStartPosition);
 
             if (mDragNDropListener != null)
-                mDragNDropListener.onItemDrop(this, item, mStartPosition, endPosition, id);
+                mDragNDropListener.onItemDrop(this, mItemView, mStartPosition, endPosition, id);
 
             Adapter adapter = getAdapter();
             DragNDropAdapter dndAdapter;
@@ -273,7 +325,7 @@ public class DragNDropListView extends ListView {
                 dndAdapter = (DragNDropAdapter)adapter;
             }
 
-            dndAdapter.onItemDrop(this, item, mStartPosition, endPosition, id);
+            dndAdapter.onItemDrop(this, mItemView, mStartPosition, endPosition, id);
         }
 		
         mDragView.setVisibility(GONE);
@@ -281,12 +333,13 @@ public class DragNDropListView extends ListView {
         
         mDragView.setImageDrawable(null);
         mDragView = null;
-        
-        item.setDrawingCacheEnabled(false);
-        item.destroyDrawingCache();
-        
-        item.setVisibility(View.VISIBLE);
-        
+
+        mItemView.setDrawingCacheEnabled(false);
+        mItemView.destroyDrawingCache();
+
+        mItemView.setVisibility(View.VISIBLE);
+        mItemView = null;
+
         mStartPosition = INVALID_POSITION;
         
         invalidateViews(); // We have changed the adapter data, so change everything
