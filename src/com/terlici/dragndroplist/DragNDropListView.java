@@ -21,17 +21,14 @@ import android.graphics.Bitmap;
 import android.graphics.PixelFormat;
 import android.graphics.Rect;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
+import android.widget.Adapter;
 import android.widget.ImageView;
 import android.widget.ListView;
-import android.widget.Adapter;
 import android.widget.WrapperListAdapter;
-
-import com.terlici.dragndroplist.DragNDropAdapter;
 
 public class DragNDropListView extends ListView {
 	
@@ -186,13 +183,6 @@ public class DragNDropListView extends ListView {
                 if (mStartPosition != INVALID_POSITION) {
                     int actualPosition =  pointToPosition(x,y);
                     onDragMoves(actualPosition);
-
-                    Log.e("DragNDrop", "getScrollY " + getScrollY());
-                    Log.e("DragNDrop", "getTop " + getTop());
-                    Log.e("DragNDrop", "getBottom " + getBottom());
-                    Log.e("DragNDrop", "getMeasuredHeight " + getMeasuredHeight());
-                    Log.e("DragNDrop", "x " + x);
-                    Log.e("DragNDrop", "y " + y);
 
                     if(y <= getTop())
                     {
